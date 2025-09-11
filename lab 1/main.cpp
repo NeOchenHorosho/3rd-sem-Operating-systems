@@ -13,9 +13,9 @@ int main(int, char**)
         return EXIT_FAILURE;
     }
     char* const args_creator[] = {"Creator", const_cast<char*>(filename_creator.c_str()), const_cast<char*>(std::to_string(num_records).c_str()), NULL}; 
-    pid_t pid = fork();
+    pid_t pid_creator = fork();
     int creator_res = 1;
-    if(pid == 0)
+    if(pid_creator == 0)
     {
         execv("./Creator", args_creator);
         _exit(EXIT_FAILURE);
@@ -35,19 +35,20 @@ int main(int, char**)
         std::cout << "Произошла ошибка во время вызова Creator. Creator был остоновлен\n";
         return EXIT_FAILURE;
     }
-    std::ifstream fin(filename_creator, std::ios::binary);
-    if(!fin.is_open())
+    std::ifstream bin_fin(filename_creator, std::ios::binary);
+    if(!bin_fin.is_open())
     {
         std::cout << "Не удалось открыть файл.\n";
         return EXIT_FAILURE;
     }
-    employee temp;
-    while (temp.read(fin))
+    employee temp_employee;
+    while (temp_employee.read(bin_fin))
     {
-        std::cout << "\n\nНомер работника: " << temp.num;
-        std::cout << "\nИмя работника: " << temp.name;
-        std::cout << "\nКоличетсво отработанных часов работника: " << temp.hours;
+        std::cout << "\n\nНомер работника: " << temp_employee.num;
+        std::cout << "\nИмя работника: " << temp_employee.name;
+        std::cout << "\nКоличетсво отработанных часов работника: " << temp_employee.hours;
     }
+    bin_fin.close();
     std::cout << "\n\n";
 
 
@@ -63,17 +64,17 @@ int main(int, char**)
     }
 
     char* const args_reporter[] = {"Reporter", const_cast<char*>(filename_creator.c_str()), const_cast<char*>(filename_reporter.c_str()), const_cast<char*>(std::to_string(salary).c_str()), NULL}; 
-    pid_t pid = fork();
-    int creator_res = 1;
-    if(pid == 0)
+    pid_t pid_reporter = fork();
+    int reporter_res = 1;
+    if(pid_reporter == 0)
     {
-        execv("./Reporter", args_creator);
+        execv("./Reporter", args_reporter);
         _exit(EXIT_FAILURE);
     }
-    else wait(&creator_res);
-    if(WIFEXITED(creator_res))
+    else wait(&reporter_res);
+    if(WIFEXITED(reporter_res))
     {
-        if(WEXITSTATUS(creator_res))
+        if(WEXITSTATUS(reporter_res))
         {
         std::cout << "Произошла ошибка во время вызова Reporter. Reporter завершил работу с ошибкой\n";
         return EXIT_FAILURE;
@@ -83,6 +84,20 @@ int main(int, char**)
     {
         std::cout << "Произошла ошибка во время вызова Reporter. Reporter был остоновлен\n";
         return EXIT_FAILURE;
+    }
+
+
+    std::ifstream txt_fin(filename_reporter);
+    if(!txt_fin.is_open())
+    {
+        std::cout << "Не удалось открыть файл.\n";
+        return EXIT_FAILURE;
+    }
+
+    std::string temp_string;
+    while(std::getline(txt_fin, temp_string))
+    {
+        std::cout << temp_string << "\n";
     }
     return EXIT_SUCCESS;
 }
