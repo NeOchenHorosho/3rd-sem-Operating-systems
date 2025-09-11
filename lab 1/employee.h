@@ -10,9 +10,8 @@ struct employee
     char name[10];
     double hours;
 
-    bool write(std::string filename)
+    bool write(std::ofstream& out)
     {
-        std::ofstream out(filename,std::ios::binary);
         if(out.is_open())
         {
             out.write(reinterpret_cast<const char*>(&num), sizeof(int));
@@ -25,20 +24,17 @@ struct employee
             return false;
         }
     }
-
-    bool read(std::string filename)
+    bool read(std::ifstream& in)
     {
-        std::ifstream in(filename, std::ios::binary);
-        if(in.is_open())
-        {
-            in.read(reinterpret_cast<char*>(&num), sizeof(int));
-            in.read(name,10*sizeof(char));
-            in.read(reinterpret_cast<char*>(&hours), sizeof(double));
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        if(!in.is_open()) return false;
+        in.read(reinterpret_cast<char*>(&num), sizeof(int));
+        in.read(name,10*sizeof(char));
+        in.read(reinterpret_cast<char*>(&hours), sizeof(double));
+        return in.good();
+    }
+
+    bool operator<(employee& r)
+    {
+        return this->num < r.num;
     }
 };
