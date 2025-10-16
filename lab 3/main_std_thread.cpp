@@ -6,10 +6,10 @@
 const size_t MAX_THREADS = 1000;
 const timespec SLEEP_TIME{0, 5000000};
 
-enum ThreadState
+enum class ThreadState
 {
     Wait,
-    Resume,       
+    Resume,
     Kill,
     Dead
 };
@@ -18,13 +18,14 @@ pthread_barrier_t init_barrier;
 pthread_mutex_t arr_mutex;
 pthread_mutex_t threads_state_mutex;
 pthread_cond_t check_threads_state;
+pthread_cond_t thread_finished;
 
 struct marker_args
 {
     std::vector<int> *arr;
     size_t *marked;
     size_t thread_num;
-    ThreadState * state;
+    ThreadState *state;
 };
 
 void print_arr(const std::vector<int> &arr)
@@ -67,10 +68,9 @@ void *marker(void *arg_)
             std::cout << "\nКоличество помеченныъ элементов: " << marked;
             std::cout << "\nНевозможно пометить: " << possible_index << '\n';
 
-            
             pthread_mutex_lock(&threads_state_mutex);
             state = ThreadState::Wait;
-            while(state == ThreadState::Wait)
+            while (state == ThreadState::Wait)
             {
                 pthread_cond_wait(&check_threads_state, &threads_state_mutex);
             }
@@ -82,12 +82,14 @@ void *marker(void *arg_)
                     if (i == thread_num + 1)
                         i = 0;
                 }
+                pthread_mutex_unlock(&arr_mutex);
+                pthread_mutex_unlock(&threads_state_mutex);
                 state = ThreadState::Dead;
                 delete arg_;
                 return nullptr;
             }
             pthread_mutex_unlock(&threads_state_mutex);
-            
+
             // pthread_barrier_wait(&unable_to_work_barrier); где-то поставить
         }
     }
@@ -107,7 +109,7 @@ int main()
         return EXIT_FAILURE;
     }
     std::vector<pthread_t> threads(num_threads);
-    std::vector<ThreadState> threads_state(num_threads, Resume);
+    std::vector<ThreadState> threads_state(num_threads, ThreadState::Resume);
     pthread_barrier_init(&init_barrier, NULL, num_threads + 1);
     pthread_mutex_init(&arr_mutex, NULL);
     pthread_mutex_init(&threads_state_mutex, NULL);
@@ -123,13 +125,27 @@ int main()
     size_t active_threads = num_threads;
     while (active_threads != 0)
     {
+        pthread_mutex_lock(&threads_state_mutex);
+        while (true)
+        {
+            bool finished_work = true;
+            for (auto a : threads_state)
+            {
+                if (a != ThreadState::Wait)
+                    finished_work == false;
+            }
+            if (finished_work)
+                break;
+            pthread_cond_wait(&thread_finished, &threads_state_mutex);
+        }
+        pthread_mutex_unlock(&threads_state_mutex);
         pthread_mutex_lock(&arr_mutex);
         print_arr(arr);
         pthread_mutex_unlock(&arr_mutex);
         std::cout << "Введите номер потока, который требуется уничтожить (начиная с нуля, кончено же)\n";
         size_t thread_to_terminate;
         std::cin >> thread_to_terminate;
-        if (thread_to_terminate >= num_threads || threads_state[thread_to_terminate])
+        if (thread_to_terminate >= num_threads || threads_state[thread_to_terminate] == ThreadState::Dead)
         {
             std::cout << "Вы ввели неверный номер потока\n";
             continue;
@@ -138,7 +154,15 @@ int main()
         threads_state[thread_to_terminate] = ThreadState::Kill;
         pthread_mutex_unlock(&threads_state_mutex);
         pthread_cond_broadcast(&check_threads_state);
-        
+        pthread_mutex_lock(&threads_state_mutex);
+        pthread_mutex_lock(&arr_mutex);
+        print_arr(arr);
+        pthread_mutex_unlock(&arr_mutex);
+        for (auto a : threads_state)
+            if (a == ThreadState::Wait)
+                a = ThreadState::Resume;
+        pthread_mutex_unlock(&threads_state_mutex);
+        pthread_cond_broadcast(&check_threads_state);
     }
 
     pthread_barrier_destroy(&init_barrier);
