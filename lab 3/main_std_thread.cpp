@@ -11,7 +11,6 @@ enum class ThreadState
     Wait,
     Resume,
     Kill,
-    Dead
 };
 
 pthread_barrier_t init_barrier;
@@ -23,7 +22,6 @@ pthread_cond_t thread_finished;
 struct marker_args
 {
     std::vector<int> *arr;
-    size_t *marked;
     size_t thread_num;
     ThreadState *state;
 };
@@ -43,54 +41,54 @@ void *marker(void *arg_)
     auto arg = static_cast<marker_args *>(arg_);
     std::vector<int> &arr = *arg->arr;
     size_t thread_num = arg->thread_num;
-    size_t &marked = *arg->marked;
-    auto state = *arg->state;
+    auto &state = *arg->state;
     srand(thread_num);
     pthread_barrier_wait(&init_barrier);
 
     while (true)
     {
-        int rand_num = rand();
         pthread_mutex_lock(&arr_mutex);
         size_t possible_index = rand() % arr.size();
         if (arr[possible_index] == 0)
         {
             nanosleep(&SLEEP_TIME, NULL);
             arr[possible_index] = thread_num + 1;
-            marked++;
             pthread_mutex_unlock(&arr_mutex);
             nanosleep(&SLEEP_TIME, NULL);
-            continue;
         }
         else
         {
+            size_t marked = 0;
+            for (auto a : arr)
+            {
+                if (a != 0)
+                    marked++;
+            }
+            pthread_mutex_unlock(&arr_mutex);
             std::cout << "Порядковый номер: " << thread_num;
             std::cout << "\nКоличество помеченныъ элементов: " << marked;
             std::cout << "\nНевозможно пометить: " << possible_index << '\n';
 
             pthread_mutex_lock(&threads_state_mutex);
             state = ThreadState::Wait;
+            pthread_cond_broadcast(&thread_finished);
             while (state == ThreadState::Wait)
-            {
                 pthread_cond_wait(&check_threads_state, &threads_state_mutex);
-            }
-            if (state == ThreadState::Kill)
+
+            bool is_killed = state == ThreadState::Kill;
+            pthread_mutex_unlock(&threads_state_mutex);
+            if (is_killed)
             {
                 pthread_mutex_lock(&arr_mutex);
-                for (auto i : arr)
+                for (auto &i : arr)
                 {
                     if (i == thread_num + 1)
                         i = 0;
                 }
                 pthread_mutex_unlock(&arr_mutex);
-                pthread_mutex_unlock(&threads_state_mutex);
-                state = ThreadState::Dead;
-                delete arg_;
+                delete arg;
                 return nullptr;
             }
-            pthread_mutex_unlock(&threads_state_mutex);
-
-            // pthread_barrier_wait(&unable_to_work_barrier); где-то поставить
         }
     }
 }
@@ -99,7 +97,6 @@ int main()
 {
     size_t arr_size;
     std::cin >> arr_size;
-    size_t *marked = new size_t(0);
     std::vector<int> arr(arr_size, 0);
     size_t num_threads;
     std::cin >> num_threads;
@@ -113,9 +110,11 @@ int main()
     pthread_barrier_init(&init_barrier, NULL, num_threads + 1);
     pthread_mutex_init(&arr_mutex, NULL);
     pthread_mutex_init(&threads_state_mutex, NULL);
+    pthread_cond_init(&check_threads_state, NULL);
+    pthread_cond_init(&thread_finished, NULL);
     for (size_t i = 0; i < num_threads; i++)
     {
-        if (pthread_create(&threads[i], NULL, marker, new marker_args{&arr, marked, i, &threads_state[i]}) != 0)
+        if (pthread_create(&threads[i], NULL, marker, new marker_args{&arr, i, &threads_state[i]}) != 0)
         {
             std::cerr << "Поток не создался\n";
             return EXIT_FAILURE;
@@ -129,10 +128,10 @@ int main()
         while (true)
         {
             bool finished_work = true;
-            for (auto a : threads_state)
+            for (auto &a : threads_state)
             {
-                if (a != ThreadState::Wait)
-                    finished_work == false;
+                if (a == ThreadState::Resume)
+                    finished_work = false;
             }
             if (finished_work)
                 break;
@@ -145,26 +144,33 @@ int main()
         std::cout << "Введите номер потока, который требуется уничтожить (начиная с нуля, кончено же)\n";
         size_t thread_to_terminate;
         std::cin >> thread_to_terminate;
-        if (thread_to_terminate >= num_threads || threads_state[thread_to_terminate] == ThreadState::Dead)
+        pthread_mutex_lock(&threads_state_mutex);
+        if (thread_to_terminate >= num_threads || threads_state[thread_to_terminate] == ThreadState::Kill)
         {
             std::cout << "Вы ввели неверный номер потока\n";
+            pthread_mutex_unlock(&threads_state_mutex);
             continue;
         }
-        pthread_mutex_lock(&threads_state_mutex);
         threads_state[thread_to_terminate] = ThreadState::Kill;
+        active_threads--;
         pthread_mutex_unlock(&threads_state_mutex);
         pthread_cond_broadcast(&check_threads_state);
+        pthread_join(threads[thread_to_terminate], NULL);
         pthread_mutex_lock(&threads_state_mutex);
         pthread_mutex_lock(&arr_mutex);
         print_arr(arr);
         pthread_mutex_unlock(&arr_mutex);
-        for (auto a : threads_state)
+        for (auto &a : threads_state)
             if (a == ThreadState::Wait)
                 a = ThreadState::Resume;
         pthread_mutex_unlock(&threads_state_mutex);
         pthread_cond_broadcast(&check_threads_state);
     }
 
+    pthread_mutex_destroy(&arr_mutex);
+    pthread_mutex_destroy(&threads_state_mutex);
     pthread_barrier_destroy(&init_barrier);
+    pthread_cond_destroy(&check_threads_state);
+    pthread_cond_destroy(&thread_finished);
     return EXIT_SUCCESS;
 }
