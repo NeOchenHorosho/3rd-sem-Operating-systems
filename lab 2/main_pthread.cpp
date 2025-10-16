@@ -33,7 +33,7 @@ void *min_max(void *arr_)
             max_index = i;
         nanosleep(&MIN_MAX_SLEEP_TIME, NULL);
     }
-
+    std::cout << arr[max_index] << '\t' << arr[min_index] << '\n';
     return new min_max_ret_struct(min_index, max_index);
 }
 
@@ -46,14 +46,13 @@ void *average(void *arr_)
         sum += arr[i];
         nanosleep(&AVERAGE_SLEEP_TIME, NULL);
     }
-
-    return new int(static_cast<int>(std::round(sum / arr.size())));
+    int* result = new int(static_cast<int>(std::round(sum / arr.size()))); 
+    std::cout << result << '\n';
+    return static_cast<void*>(result);
 }
 
 int main()
 {
-    /*Я использую std::vector, потому что он соответсвует
-    стилю c++ больше, чем указатели.*/
 
     size_t arr_size;
     std::cout << "Enter number of elements\n";
@@ -72,19 +71,20 @@ int main()
     pthread_t average_thread;
     pthread_create(&average_thread, NULL, average, &arr);
 
-
     void *min_max_ret_val;
     void *average_ret_val;
     pthread_join(min_max_thread, &min_max_ret_val);
     pthread_join(average_thread, &average_ret_val);
     min_max_ret_struct &min_max_res = *static_cast<min_max_ret_struct *>(min_max_ret_val);
-    int &average_res= *static_cast<int *>(average_ret_val);
-    arr[min_max_res.max_index]=average_res;
-    arr[min_max_res.min_index]=average_res;
-    for(auto i: arr)
+    int &average_res = *static_cast<int *>(average_ret_val);
+    arr[min_max_res.max_index] = average_res;
+    arr[min_max_res.min_index] = average_res;
+    for (auto i : arr)
     {
         std::cout << i << "\t";
     }
+    delete min_max_ret_val;
+    delete average_ret_val;
     std::cout << "\n";
     return EXIT_SUCCESS;
 }

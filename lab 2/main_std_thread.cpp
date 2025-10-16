@@ -12,16 +12,17 @@ void min_max(const std::vector<int> &arr, size_t &min_index, size_t &max_index)
     min_index = max_index = 0;
     for (size_t i = 0; i < arr.size(); i++)
     {
+        nanosleep(&MIN_MAX_SLEEP_TIME, NULL);
         if (arr[i] < arr[min_index])
         {
             nanosleep(&MIN_MAX_SLEEP_TIME, NULL);
             min_index = i;
             continue;
         }
-        nanosleep(&MIN_MAX_SLEEP_TIME, NULL);
         if (arr[i] > arr[max_index])
             max_index = i;
         nanosleep(&MIN_MAX_SLEEP_TIME, NULL);
+        std::cout << arr[max_index] << '\t' << arr[min_index] << '\n';
     }
 }
 
@@ -35,6 +36,7 @@ void average(const std::vector<int> &arr, int &result)
     }
 
     result = static_cast<int>(std::round(sum / arr.size()));
+    std::cout << result << '\n';
 }
 
 int main()
@@ -61,6 +63,7 @@ int main()
     {
         std::cout << i << "\t";
     }
+
     std::cout << "\n";
     return EXIT_SUCCESS;
 }
