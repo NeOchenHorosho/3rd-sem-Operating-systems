@@ -8,7 +8,7 @@ int main(int argc, char** argv)
     }
     std::string filename = argv[1];
     size_t num_records = std::stoull(argv[2]);
-    employee temp;
+    Employee temp;
     std::ofstream out(filename, std::ios::binary);
     if(!out.is_open())
     {

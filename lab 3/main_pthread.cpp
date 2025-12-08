@@ -16,8 +16,10 @@ enum class ThreadState
 pthread_barrier_t init_barrier;
 pthread_mutex_t arr_mutex;
 pthread_mutex_t threads_state_mutex;
+pthread_mutex_t io_mutex;
 pthread_cond_t check_threads_state;
 pthread_cond_t thread_finished;
+
 
 struct marker_args
 {
@@ -61,13 +63,16 @@ void *marker(void *arg_)
             size_t marked = 0;
             for (auto a : arr)
             {
-                if (a != 0)
+                if (a == thread_num+1)
                     marked++;
             }
             pthread_mutex_unlock(&arr_mutex);
+
+            pthread_mutex_lock(&io_mutex);
             std::cout << "Порядковый номер: " << thread_num;
             std::cout << "\nКоличество помеченныъ элементов: " << marked;
-            std::cout << "\nНевозможно пометить: " << possible_index << '\n';
+            std::cout << "\nНевозможно пометить: " << possible_index << "\n\n";
+            pthread_mutex_unlock(&io_mutex);
 
             pthread_mutex_lock(&threads_state_mutex);
             state = ThreadState::Wait;
@@ -110,6 +115,7 @@ int main()
     pthread_barrier_init(&init_barrier, NULL, num_threads + 1);
     pthread_mutex_init(&arr_mutex, NULL);
     pthread_mutex_init(&threads_state_mutex, NULL);
+    pthread_mutex_init(&io_mutex, NULL);
     pthread_cond_init(&check_threads_state, NULL);
     pthread_cond_init(&thread_finished, NULL);
     for (size_t i = 0; i < num_threads; i++)
@@ -141,15 +147,20 @@ int main()
         pthread_mutex_lock(&arr_mutex);
         print_arr(arr);
         pthread_mutex_unlock(&arr_mutex);
+        pthread_mutex_lock(&io_mutex);
         std::cout << "Введите номер потока, который требуется уничтожить (начиная с нуля, кончено же)\n";
         size_t thread_to_terminate;
         std::cin >> thread_to_terminate;
+        pthread_mutex_unlock(&io_mutex);
         pthread_mutex_lock(&threads_state_mutex);
         if (thread_to_terminate >= num_threads || threads_state[thread_to_terminate] == ThreadState::Kill)
         {
+            
+            pthread_mutex_lock(&io_mutex);
             std::cout << "Вы ввели неверный номер потока\n";
             pthread_mutex_unlock(&threads_state_mutex);
             continue;
+            pthread_mutex_unlock(&io_mutex);
         }
         threads_state[thread_to_terminate] = ThreadState::Kill;
         active_threads--;

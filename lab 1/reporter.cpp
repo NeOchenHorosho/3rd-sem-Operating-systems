@@ -29,8 +29,8 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    std::vector<employee> employees;
-    employee temp;
+    std::vector<Employee> employees;
+    Employee temp;
     while (temp.read(fin))
     {
         employees.push_back(temp);

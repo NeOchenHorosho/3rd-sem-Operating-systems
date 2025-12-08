@@ -11,8 +11,8 @@ int main()
     cout << "Enter filename\n";
     string filename_cpp;
     fstream binary_file;
-    binary_file.open(filename_cpp, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
     cin >> filename_cpp;
+    binary_file.open(filename_cpp, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
     cout << "Enter number of records\n";
     int records_num;
     cin >> records_num;
@@ -32,7 +32,7 @@ int main()
     {
         binary_file.write((char *)&empty_msg, sizeof(Message));
     }
-
+    binary_file.flush();
 
     cout << "Enter number of senders:\n";
     int senders_num;
@@ -48,20 +48,20 @@ int main()
     int shm_fd = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1)
     {
-        cerr << "shm_open failed";
+        cerr << "shm_open failed\n";
         return EXIT_FAILURE;
     }
 
     if (ftruncate(shm_fd, sizeof(Info)) == -1)
     {
-        cerr << "ftruncate failed";
+        cerr << "ftruncate failed\n";
         return EXIT_FAILURE;
     }
 
     Info *info = (Info *)mmap(NULL, sizeof(Info), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (info == MAP_FAILED)
     {
-        cerr << "mmap failed";
+        cerr << "mmap failed\n";
         return EXIT_FAILURE;
     }
 
@@ -90,7 +90,7 @@ int main()
 
     if (free_sem == SEM_FAILED || full_sem == SEM_FAILED)
     {
-        cerr << "sem_open failed";
+        cerr << "sem_open failed\n";
         return EXIT_FAILURE;
     }
 
@@ -112,7 +112,7 @@ int main()
     pthread_barrier_wait(&info->init_barrier);
     while (true)
     {
-        cout << "\n1. Read message\n0. Exit\n> ";
+        cout << "\n1. Read message\n0. Exit\n";
         int choice;
         cin >> choice;
 

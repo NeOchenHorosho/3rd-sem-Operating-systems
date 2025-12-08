@@ -4,7 +4,7 @@
 #include <string>
 
 
-struct employee
+struct Employee
 {
     int num;
     char name[10];
@@ -33,7 +33,7 @@ struct employee
         return in.good();
     }
 
-    bool operator<(employee& r)
+    bool operator<(Employee& r)
     {
         return this->num < r.num;
     }

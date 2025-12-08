@@ -41,7 +41,7 @@ int main(int, char**)
         std::cout << "Не удалось открыть файл.\n";
         return EXIT_FAILURE;
     }
-    employee temp_employee;
+    Employee temp_employee;
     while (temp_employee.read(bin_fin))
     {
         std::cout << "\n\nНомер работника: " << temp_employee.num;

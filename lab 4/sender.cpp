@@ -48,6 +48,7 @@ int main(int argc, char* argv[])
 
         cout << "\n1. Send message\n0. Exit\n";
         int choice;
+        cin >> choice;
         if (choice == 0) break;
 
         if (choice == 1) {
