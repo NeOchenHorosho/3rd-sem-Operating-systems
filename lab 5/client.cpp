@@ -44,8 +44,8 @@ int main(int argc, char** argv)
                 cout << "There's no employee with such number\n";
                 break;
             }
-            cout << "Data of the employee:\nEmployee's name:" << response.employee.name
-            <<  "\n Employee's worked hours:" << response.employee.num;
+            cout << "Data of the employee:\n\tEmployee's name:" << response.employee.name
+            <<  "\n\tEmployee's worked hours:" << response.employee.num;
             cout << "Enter new name\n";
             string temp_employee_name;
             cin >> temp_employee_name;
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
             cin >> request.employee.hours;
             request.is_write = true;
             write(request_fifo_fd, &request, sizeof(Request_package));
-            cout << "Your request is fuffiled\n";
+            cout << "Your request is fulfiled\n";
         }
             break;
         case 2:
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
             cout << "Enter employee's number\n";
             int employee_num;
             cin >> employee_num;
-            Request_package request{true, {employee_num, "", 0.0}};
+            Request_package request{false, {employee_num, "", 0.0}};
             write(request_fifo_fd, &request, sizeof(Request_package));
             Response_package response;
             read(response_fifo_fd, &response, sizeof(Response_package));
@@ -71,8 +71,12 @@ int main(int argc, char** argv)
                 cout << "There's no employee with such number\n";
                 break;
             }
-            cout << "Data of the employee:\nEmployee's name:" << response.employee.name
-            <<  "\n Employee's worked hours:" << response.employee.num;
+            cout << "Data of the employee:\n\tEmployee's name:" << response.employee.name
+            <<  "\n\tEmployee's worked hours:" << response.employee.num
+            << "\n\nPress Enter to end the access to the record\n";
+            cin.get();
+            char notify_byte = '0';
+            write(request_fifo_fd,&notify_byte, sizeof(char));
         }    
             break;
         default:
